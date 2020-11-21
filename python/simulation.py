@@ -3,7 +3,7 @@ import math
 
 class Hash_Function:
     func = {}
-    def value(self, key):                 # not to be confused with 'key' in rest of the code
+    def value(self, key):              # not to be confused with 'key' in rest of the code
         if key not in self.func:
             self.func[key] = random.uniform(0,1)
         return self.func[key]
@@ -11,7 +11,7 @@ class Hash_Function:
 class Query:
     def __init__(self, key, attr, T_q, m_q, n_q, p_q, gamma_q):
         self.key = key      
-        self.attr = attr                  # key, attr are subsets of [0,1,2,3,4, ... , #pac_info - 1] stored as a 'frozenset'
+        self.attr = attr               # key, attr are subsets of [0,1,2,3,4, ... , #pac_info - 1] stored as a 'frozenset'
         self.T_q = T_q
         self.m_q = m_q
         self.p_q = p_q
@@ -34,20 +34,20 @@ class Packet:
         self.pac_info = pac_info      # has srcIP, dstIP, srcPort, dstPort, ... in some fixed order
 
     def get_timestamp(self):
-        return self.pac_info[5];           # modify accordingly
+        return self.pac_info[5];      # TODO: modify accordingly
 
     def extract(self, indset):        # get values for some index subset from pac_info
-        val = set()
+        val = []
         for ind in indset:
-            val.add(self.pac_info[ind])
-        return frozenset(val)
+            val.append(self.pac_info[ind])
+        return tuple(val)
 
     def collect_coupon_from_attr(self, attr):
         global attr_to_hashfunc
 
         attrval = self.extract(attr)
         hashval = attr_to_hashfunc[attr].value(attrval)
-        query, coupon = which_coupon(attr, hashval)
+        # query, coupon = which_coupon(attr, hashval)
         # print(hashval)
         # if query != None:
         #     print(query.key)
@@ -55,7 +55,7 @@ class Packet:
         #     print(query)
         # print(coupon)
         # print()
-        return (query, coupon)
+        return which_coupon(attr, hashval)
 
     def collect_coupon(self):
         global attributes
@@ -76,12 +76,12 @@ class Packet:
 
 
 class CCTable:
-    # Not doing checksum stuff now. Assuming not too many (query, key) pairs that will be active
-    # Also ignoring onehot(c) thing
+    # not doing checksum stuff now. Assuming not too many (query, key) pairs that will be active
+    # also ignoring onehot(c) thing
 
-    table = {}                    # map each (q, k) to a list of length m_q               
+    table = {}                    # map each (q, k) to a 0/1 list of length m_q               
+    table_count = {}              # map each (q, k) to no. of ones in above list
     table_timestamp = {}          # map each (q, k) to a timestamp
-    table_count = {}
     W = 0
 
     def __init__(self, W):        # timestamp expire time
@@ -105,7 +105,8 @@ class CCTable:
             self.table[qk_pair][coupon] = 1
             self.table_count[qk_pair] += 1
 
-        if self.table_count[qk_pair] == query.m_q:
+        if self.table_count[qk_pair] == query.n_q:
+            # TODO
             print("Output alert for query, keyval here ")
             print(query.key) 
 
