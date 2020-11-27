@@ -15,74 +15,83 @@ enum ip_attr {
   timestamp = 4,
 };
 
-// TODO: support key with multiple attribute
-struct query_t {
-  enum ip_attr key; 
-  enum ip_attr attr;
-  int threhold;
+struct data_t {
+  __be32 srcIP;
+  __be32 dstIP;
+  __be16 srcPort;
+  __be16 dstPort;
+  uint32_t timestamp;
 };
 
-struct table_key_t{
-  int query_num;
-  long long query_key; 
-}; 
+struct table_key_t {
+  int16_t queryNum;
+  struct data_t queryKey;
+};
 
-//BPF_TABLE("hash", struct table_key_t, long long, stats, 10000);
-BPF_HASH(stats, struct table_key_t, long long);
-BPF_HASH(queries, int, struct query_t, 10000); 
+typedef uint64_t entry_t;
 
+BPF_HASH(stats, struct table_key_t, entry_t);
 // BPF_PERF_OUTPUT(events);
 
-static long long getAttr(struct iphdr* ip, enum ip_attr attr){
-  if (attr == srcIP)
-    return ip->saddr;
-  else if (attr == dstIP)
-    return ip->daddr;
-  else
-    return 0;
-}
-
-static void updateQueries(){
-  struct query_t query1;
-  query1.key = srcIP;
-  query1.attr = dstIP;
-  query1.threhold = 100;
-  struct query_t query2;
-  query2.key = dstIP;
-  query2.attr = srcIP;
-  query2.threhold = 100;
-  int one = 0;
-  int two = 1;
-  queries.update(&one, &query1);
-  queries.update(&two, &query2);
-}
-
-static int incrementCoupon(struct iphdr* ip){
-  updateQueries();
-  // random find a query type to increment 
+static void collect(int16_t queryNum, uint8_t queryN, uint8_t couponNum, struct data_t* queryKey) {
   struct table_key_t key;
-  key.query_num = bpf_get_prandom_u32() % 2; // number of queries
-  struct query_t* query = queries.lookup(&key.query_num);
-  if (query == NULL){
-    return -1;
+  key.queryNum = queryNum;
+  key.queryKey = *queryKey;
+
+  entry_t x = 1u << couponNum;
+  entry_t* p = stats.lookup(&key);
+  if (p == NULL) {
+    stats.update(&key, &x);
+  } else {
+    x |= *p;
+    *p = x;
   }
-  key.query_key = getAttr(ip, query->key);
-  long long query_val = getAttr(ip, query->attr);  
-  // this hash is incorrect, need to use fixed seeded hashes 
-  // for each attribute 
-  if (bpf_get_prandom_u32() % query->threhold == 0){
-    char coupon = bpf_get_prandom_u32() % 4; //number of coupons
-    long long shift = 1 << coupon; 
-    long long* count = stats.lookup(&key);
-    
-    if (count != NULL) 
-      *count = *count | 1 << coupon; 
-    else{ 
-      stats.update(&key, &shift);
-    }
-    // long long count = *(stats.lookup(&key.query_key)) | 1 << coupon;   
-  } 
-  return 0;
+
+  if (__builtin_popcount(x) >= queryN) {
+  /*   bpf_trace_printk("hit threshold for query %d!", queryNum); */
+  }
+}
+
+// TODO actually enqueue here, using BPF_PERCPU_ARRAY likely
+#define queueCollection collect
+
+#define setFld(f, p, d, m) (d)->f = ((m) & 1 << f) ? (p)->f : 0
+#define populateData(p, d, m) setFld(srcIP, p,d,m); setFld(dstIP, p,d,m); setFld(srcPort, p,d,m); setFld(dstPort, p,d,m); setFld(timestamp, p,d,m)
+#define clr(m) m.srcIP=0, m.dstIP=0, m.srcPort=0, m.dstPort=0, m.timestamp=0
+
+// TODO implement something less sketchy
+static uint32_t hash(struct data_t* data) {
+  #define __uint128_t uint64_t  // TODO yikes, if u128 won't work, gotta at least use all the bits.
+  __uint128_t x = *(__uint128_t*)data;
+  x ^= x >> 14;
+  x ^= x << 29;
+  x += 83748127;
+  x ^= x << 13;
+  x ^= x >> 49;
+  x *= 17;
+  x += 38412343;
+  return (uint32_t)(x >> 96 ^ x >> 64 ^ x >> 32 ^ x);
+}
+
+static void processPacket(struct data_t* pkt) {
+  collect(-1,0,0,pkt);
+  struct data_t masked;
+  uint32_t h;
+#if 1
+  /* populateData(pkt, &masked, 1 << dstPort); */
+  clr(masked); masked.timestamp = pkt->timestamp;
+  h = hash(&masked);
+  if (false) { // just to make formatting consistent
+  } else if (0u << 30 <= h && h <= (1u << 30) - 1) {
+    populateData(pkt, &masked, 1 << srcPort);
+    queueCollection(0, 4, (h - (0u << 30)) >> 28, &masked);
+  } else if (1u << 30 <= h && h <= (2u << 30) - 1) {
+    populateData(pkt, &masked, 1 << srcIP | 1 << srcPort);
+    queueCollection(1, 8, (h - (1u << 30)) >> 27, &masked);
+  }
+#else
+#include "queries.h"
+#endif
 }
 
 int monitor(struct xdp_md *ctx) {
@@ -94,9 +103,16 @@ int monitor(struct xdp_md *ctx) {
     struct iphdr *ip = data + sizeof(*eth);
     if ((void*)ip + sizeof(*ip) <= data_end) {
       if (ip->protocol == IPPROTO_UDP) {
-        // newly added line to increment stats
-         int success = incrementCoupon(ip);
-         bpf_trace_printk("success or not: %d", success);
+        struct udphdr *udp = (void*)ip + sizeof(*ip);
+        if ((void*)udp + sizeof(*udp) <= data_end) {
+          struct data_t packet;
+          packet.srcIP = ip->saddr;
+          packet.dstIP = ip->daddr;
+          packet.srcPort = udp->source;
+          packet.dstPort = udp->dest;
+          packet.timestamp = bpf_ktime_get_ns();
+          processPacket(&packet);
+        }
       }
     }
   }
