@@ -60,10 +60,11 @@ static void collect(int16_t queryNum, uint8_t queryN, uint8_t couponNum, struct 
 #define clr(m) m.srcIP=0, m.dstIP=0, m.srcPort=0, m.dstPort=0, m.timestamp=0
 
 static uint32_t hash(struct data_t* data) {
-  uint64_t x1 = ((uint64_t)data->srcIP << 32) + (uint64_t)data->dstIP;
-  uint64_t x2 = ((uint64_t)data->srcPort << 48) + ((uint64_t)data->dstPort << 32) + (uint64_t)data->timestamp;
-  uint64_t x = x1 ^ x2;
-  x = x * 3935559000370003845 + 2691343689449507681;
+  uint64_t x = ((uint64_t)data->srcIP << 32) + (uint64_t)data->dstIP;
+  uint64_t y = ((uint64_t)data->srcPort << 48) + ((uint64_t)data->dstPort << 32) + (uint64_t)data->timestamp;
+  x = x * 3935559000370003845LL + 2691343689449507681LL;
+  y = y * 8327418273481278347LL + 8374128374718273187LL;
+  x ^= y;
 
   x ^= x >> 21;
   x ^= x << 37;
@@ -75,7 +76,7 @@ static uint32_t hash(struct data_t* data) {
   x ^= x >> 41;
   x ^= x <<  5;
 
-  return x;
+  return x >> 32 ^ x;
 }
 
 static void processPacket(struct data_t* pkt) {
