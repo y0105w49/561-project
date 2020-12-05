@@ -3,7 +3,7 @@ from bcc import BPF
 import time
 
 device = "lo"
-b = BPF(src_file="filter.c")
+b = BPF(src_file="filter.c", cflags=["-I/vagrant/coupon"])
 fn = b.load_func("monitor", BPF.XDP)
 b.attach_xdp(device, fn, 0)
 

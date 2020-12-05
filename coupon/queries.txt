@@ -1,2 +1,6 @@
-4 100 4 4
-5 100 4 4
+1 srcIP dstIP 5 30 20
+2 dstIP srcIP 6 30 20
+3 srcIP,dstIP dstPort 5 10 10
+4 srcIP,dstIP timestamp 4 3 3
+5 srcIP,dstIP,srcPort,dstPort timestamp 5 8 6
+6 dstIP,dstPort srcIP,srcPort 5 8 6

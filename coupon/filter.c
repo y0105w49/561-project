@@ -83,7 +83,7 @@ static void processPacket(struct data_t* pkt) {
   collect(-1,0,0,pkt);
   struct data_t masked;
   uint32_t h;
-#if 1
+#if false
   /* populateData(pkt, &masked, 1 << dstPort); */
   clr(masked); masked.timestamp = pkt->timestamp;
   h = hash(&masked);
