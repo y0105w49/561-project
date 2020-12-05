@@ -48,7 +48,7 @@ static void collect(int16_t queryNum, uint8_t queryN, uint8_t couponNum, struct 
   }
 
   if (__builtin_popcount(x) >= queryN) {
-  /*   bpf_trace_printk("hit threshold for query %d!", queryNum); */
+    /*   bpf_trace_printk("hit threshold for query %d!", queryNum); */
   }
 }
 
@@ -59,18 +59,23 @@ static void collect(int16_t queryNum, uint8_t queryN, uint8_t couponNum, struct 
 #define populateData(p, d, m) setFld(srcIP, p,d,m); setFld(dstIP, p,d,m); setFld(srcPort, p,d,m); setFld(dstPort, p,d,m); setFld(timestamp, p,d,m)
 #define clr(m) m.srcIP=0, m.dstIP=0, m.srcPort=0, m.dstPort=0, m.timestamp=0
 
-// TODO implement something less sketchy
 static uint32_t hash(struct data_t* data) {
-  #define __uint128_t uint64_t  // TODO yikes, if u128 won't work, gotta at least use all the bits.
-  __uint128_t x = *(__uint128_t*)data;
-  x ^= x >> 14;
-  x ^= x << 29;
-  x += 83748127;
-  x ^= x << 13;
-  x ^= x >> 49;
-  x *= 17;
-  x += 38412343;
-  return (uint32_t)(x >> 96 ^ x >> 64 ^ x >> 32 ^ x);
+  uint64_t x1 = ((uint64_t)data->srcIP << 32) + (uint64_t)data->dstIP;
+  uint64_t x2 = ((uint64_t)data->srcPort << 48) + ((uint64_t)data->dstPort << 32) + (uint64_t)data->timestamp;
+  uint64_t x = x1 ^ x2;
+  x = x * 3935559000370003845 + 2691343689449507681;
+
+  x ^= x >> 21;
+  x ^= x << 37;
+  x ^= x >>  4;
+
+  x *= 4768777513237032717;
+
+  x ^= x << 20;
+  x ^= x >> 41;
+  x ^= x <<  5;
+
+  return x;
 }
 
 static void processPacket(struct data_t* pkt) {
@@ -118,4 +123,3 @@ int monitor(struct xdp_md *ctx) {
   }
   return XDP_PASS;
 }
-
