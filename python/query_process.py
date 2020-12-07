@@ -15,9 +15,12 @@
 # 2 3 8 124 7 14 9
 
 import random
+import math
 # variables
 MAX_MEMORY = 32 			# w = 32-bit
 ERROR_TOLERANCE = 0.05
+NUM_TRIALS = 10			# for find_best_config_new
+P_LIMIT = 20
 
 def expected_CC(m,inv_p,n):
 	ret = 0
@@ -25,15 +28,29 @@ def expected_CC(m,inv_p,n):
 		ret += inv_p/(m-j)
 	return ret
 
+
+def CC_experiment(m,inv_p, n, T):
+	collected = [0]*m
+	num_collected = 0
+	for it in range(1,3*T+1):				# 3 is arbitrary
+		val = random.uniform(0,1)
+		coupon = math.floor(val*inv_p)
+		if coupon<m and collected[coupon] == 0:
+			collected[coupon] = 1
+			num_collected += 1
+			if num_collected == m:
+				return it
+	return 3*T_q
+
 def relative_error(T, T_q):
 	# print(abs(T - T_q)/T_q)
 	return abs(T - T_q)/T_q
 
 
-def find_best_config(T_q, gamma_q, p_limit=20):
+def find_best_config(T_q, gamma_q):
 	best_config = []
 	smallest_error = float('inf')
-	for i in range(p_limit):
+	for i in range(P_LIMIT):
 		inv_p_q = 2**i
 		upperbound_m = int(min(MAX_MEMORY, gamma_q*inv_p_q))
 		if upperbound_m < 1:
@@ -51,19 +68,22 @@ def find_best_config(T_q, gamma_q, p_limit=20):
 	
 	return best_config
 
-# actually run experiment and minimize average error
-# def find_best_config_new(T_q, gamma_q, p_limit=20):
+# # actually run experiment and minimize average error
+# def find_best_config_new(T_q, gamma_q):
 # 	best_config = []
 # 	smallest_error = float('inf')
-# 	for i in range(p_limit):
+# 	for i in range(P_LIMIT):
 # 		inv_p_q = 2**i
 # 		upperbound_m = int(min(MAX_MEMORY, gamma_q*inv_p_q))
 # 		if upperbound_m < 1:
 # 			continue
 # 		for m_q in range(1,upperbound_m+1):
 # 			for n_q in range(1,m_q+1):
-# 				curr_expected_CC = expected_CC(m_q, inv_p_q, n_q)
-# 				curr_error = relative_error(curr_expected_CC, T_q)
+# 				curr_error = 0
+# 				for trial in range(NUM_TRIALS):
+# 					curr_expected_CC = CC_experiment(m_q, inv_p_q, n_q, T_q)
+# 					curr_error += relative_error(curr_expected_CC, T_q)
+# 				curr_error = curr_error/NUM_TRIALS
 # 				if curr_error < smallest_error:
 # 					best_config = [i, m_q, n_q]
 # 					smallest_error = curr_error
@@ -71,7 +91,7 @@ def find_best_config(T_q, gamma_q, p_limit=20):
 # 	if smallest_error > ERROR_TOLERANCE:
 # 		print("Relative error greater than 0.05")
 	
-# 	return best_config
+	return best_config
 
 fin = open("packet_info.txt", "r")
 packet_info = fin.read()
@@ -113,12 +133,12 @@ fout = open("queries.txt","w+")
 for i in range(number_queries):
 	query = queries_in[i].split(" ")
 	T_q = int(query[3])
-	curr_best_config = find_best_config(T_q, gamma_q, p_limit=20)
+	curr_best_config = find_best_config(T_q, gamma_q)
 	query[1] = subset_to_int(query[1])
 	query[2] = subset_to_int(query[2])
 	query = query+ curr_best_config
 	query = " ".join(str(x) for x in query)
 	fout.write(query+"\n")
 	# print(query)
-	
+
 fout.close()
