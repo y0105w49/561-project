@@ -9,10 +9,10 @@
 
 # Output Format:
 # <query num> <keys> <attrs> <T_q> <-log(p)> <m> <n> (keys,attrs are comma-separated)
+# changes keys and attributes to integers representing subsets, according to packet_info.txt
 # For exmaple:
-# 1 1 0 6 30 20
-# 2 0,1 2 5 10 10
-
+# 1 2 1 93 10 11 1
+# 2 3 8 124 7 14 9
 
 import random
 # variables
@@ -73,13 +73,37 @@ def find_best_config(T_q, gamma_q, p_limit=20):
 	
 # 	return best_config
 
+fin = open("packet_info.txt", "r")
+packet_info = fin.read()
+fin.close()
+packet_info = packet_info.split("\n")
+if packet_info[len(packet_info)-1] == '':
+	packet_info.pop()
+# print(packet_info)
+num_pack = len(packet_info)
+pack_dict = {}
+for i in range(num_pack):
+	pack_dict[packet_info[i]] = i
+
+def subset_to_int(sub):
+	sub = sub.split(',')
+	sublist = [0]*num_pack
+	for i in range(len(sub)):
+		sublist[pack_dict[sub[i]]] = 1
+	sublist = "".join(str(x) for x in sublist)
+	ret = int(sublist[::-1],2)
+	# print(sub)
+	# print(sublist)
+	# print(ret)
+	return ret
+	
 
 fin = open("queries_in.txt", "r")
 queries_in = fin.read()
 fin.close()
-
 queries_in = queries_in.split("\n")
-queries_in.pop()
+if queries_in[len(queries_in)-1] == '':
+	queries_in.pop()
 # print(queries_in)
 number_queries = len(queries_in)
 gamma_q = 1/number_queries
@@ -90,11 +114,11 @@ for i in range(number_queries):
 	query = queries_in[i].split(" ")
 	T_q = int(query[3])
 	curr_best_config = find_best_config(T_q, gamma_q, p_limit=20)
+	query[1] = subset_to_int(query[1])
+	query[2] = subset_to_int(query[2])
 	query = query+ curr_best_config
 	query = " ".join(str(x) for x in query)
 	fout.write(query+"\n")
 	# print(query)
-	# print(T_q)
-	# list_T_q.append(int(queries_in[i][3]))
-
+	
 fout.close()
