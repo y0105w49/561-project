@@ -1,0 +1,6 @@
+1 srcIP dstIP 282 13 29 1
+2 dstIP srcIP 171 10 19 3
+3 srcIP,dstIP dstPort 1004 8 28 28
+4 srcIP,dstIP timestamp 922 11 5 2
+5 srcIP,dstIP,srcPort,dstPort timestamp 244 8 19 12
+6 dstIP,dstPort srcIP,srcPort 432 11 10 2
