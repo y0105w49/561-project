@@ -19,7 +19,7 @@ import math
 # variables
 MAX_MEMORY = 32 			# w = 32-bit
 ERROR_TOLERANCE = 0.05
-NUM_TRIALS = 10			# for find_best_config_new
+# NUM_TRIALS = 10			# for find_best_config_new
 P_LIMIT = 20
 
 def expected_CC(m,inv_p,n):
@@ -29,18 +29,18 @@ def expected_CC(m,inv_p,n):
 	return ret
 
 
-def CC_experiment(m,inv_p, n, T):
-	collected = [0]*m
-	num_collected = 0
-	for it in range(1,3*T+1):				# 3 is arbitrary
-		val = random.uniform(0,1)
-		coupon = math.floor(val*inv_p)
-		if coupon<m and collected[coupon] == 0:
-			collected[coupon] = 1
-			num_collected += 1
-			if num_collected == m:
-				return it
-	return 3*T_q
+# def CC_experiment(m,inv_p, n, T):
+# 	collected = [0]*m
+# 	num_collected = 0
+# 	for it in range(1,3*T+1):				# 3 is arbitrary
+# 		val = random.uniform(0,1)
+# 		coupon = math.floor(val*inv_p)
+# 		if coupon<m and collected[coupon] == 0:
+# 			collected[coupon] = 1
+# 			num_collected += 1
+# 			if num_collected == m:
+# 				return it
+# 	return 3*T_q
 
 def relative_error(T, T_q):
 	# print(abs(T - T_q)/T_q)
