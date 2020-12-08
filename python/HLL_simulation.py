@@ -102,9 +102,9 @@ class HLLTable:
             self.table_count[qk_pair] = self.table[qk_pair].cardinality()
 
         self.table[qk_pair].add(str(attr)) # expect attr to be string
-        self.table_count[qk_pair] = self.table[qk_pair].cardinality
+        self.table_count[qk_pair] = self.table[qk_pair].cardinality()
 
-        if self.table_count[qk_pair] == query.n_q:
+        if self.table_count[qk_pair] >= query.n_q:
             # TODO
             print("Output alert for query, keyval here ")
             print(query.key) 
