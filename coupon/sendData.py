@@ -8,7 +8,7 @@ if (len(sys.argv) != 2):
   print("usage: readData.py \{filename\}.npy") 
 Trace=np.load(sys.argv[1])
 print(Trace[0])
-for i in len(Trace):
+for i in range(len(Trace)):
 # for i in range(10):
   srcIP = socket.inet_ntoa(Trace[i][1])
   dstIP = socket.inet_ntoa(Trace[i][2]) 
