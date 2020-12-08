@@ -4,7 +4,7 @@
 # from Table 1 (with fake m,n,p):
 1 srcIP dstIP 5 30 20
 2 dstIP srcIP 6 30 20
-3 srcIP,dstIP dstPort 5 10 10
+3 srcIP,dstIP dstPort 4 4 2
 4 srcIP,dstIP timestamp 4 3 3
-5 srcIP,dstIP,srcPort,dstPort timestamp 5 8 6
+5 srcIP,dstIP,srcPort,dstPort timestamp 4 8 6
 6 dstIP,dstPort srcIP,srcPort 5 8 6

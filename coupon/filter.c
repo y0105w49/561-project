@@ -42,25 +42,21 @@ static uint8_t popcount(entry_t x) {
   return x & 0x3f;
 }
 
-static void collect(struct xdp_md *ctx, int16_t queryNum, uint8_t queryN, uint8_t couponNum, struct data_t* queryKey) {
-  struct table_key_t key;
-  key.queryNum = queryNum;
-  key.queryKey = *queryKey;
-
+static void collect(struct xdp_md *ctx, uint8_t queryN, uint8_t couponNum, struct table_key_t* key) {
   entry_t x = 1u << couponNum;
-  entry_t* p = stats.lookup(&key);
+  entry_t* p = stats.lookup(key);
   if (p != NULL) {
     x |= *p;
   }
 
   if (__builtin_popcount(x) == queryN) {
       /* bpf_trace_printk("hit threshold for query %d!", queryNum); */
-    events.perf_submit(ctx, &queryNum, sizeof(queryNum));
+    events.perf_submit(ctx, key, sizeof(*key));
     x = ~0;
   }
 
   if (p == NULL) {
-    stats.update(&key, &x);
+    stats.update(key, &x);
   } else {
     *p = x;
   }
@@ -94,24 +90,13 @@ static uint32_t hash(struct data_t* data) {
 }
 
 static void processPacket(struct xdp_md *ctx, struct data_t* pkt) {
-  /* collect(ctx,-1,0,0,pkt); */
-  struct data_t masked;
+  struct table_key_t key;
+  key.queryKey = *pkt;
+  key.queryNum = -1;
+  collect(ctx,1,0,&key);
+  #define masked key.queryKey
   uint32_t h;
-#if false
-  /* populateData(pkt, &masked, 1 << dstPort); */
-  clr(masked); masked.timestamp = pkt->timestamp;
-  h = hash(&masked);
-  if (false) { // just to make formatting consistent
-  } else if (0u << 30 <= h && h <= (1u << 30) - 1) {
-    populateData(pkt, &masked, 1 << srcPort);
-    queueCollection(ctx, 0, 4, (h - (0u << 30)) >> 28, &masked);
-  } else if (1u << 30 <= h && h <= (2u << 30) - 1) {
-    populateData(pkt, &masked, 1 << srcIP | 1 << srcPort);
-    queueCollection(ctx, 1, 8, (h - (1u << 30)) >> 27, &masked);
-  }
-#else
 #include "queries.h"
-#endif
 }
 
 int monitor(struct xdp_md *ctx) {
