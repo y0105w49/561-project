@@ -17,11 +17,13 @@
 
 import random
 import math
+from HLL import HyperLogLog
 # variables
+NUM_ESTIMATORS = 6
 MAX_MEMORY = 32 			# w = 32-bit
 ERROR_TOLERANCE = 0.05
 P_LIMIT = 25
-NUM_TRIALS = 50			# for find_best_config_new
+NUM_TRIALS = 100			# for find_best_config_new
 
 # order = 1 gives expectation, order = 2 gives squared variance
 def moment_CC(m, inv_p, order):
@@ -148,39 +150,6 @@ def find_best_config(T_q, gamma_q, b, ppow):
 	return (best_config, bias, rel_error, l2_rel_error)
 
 
-# Simulations for a single query :
-
-for T_q in range(1000,1001):
-	print("T_q = "+str(T_q))
-
-	for b in range(2):
-		for ppow in range(2):
-			curr_best_config, bias, rel_error, l2_rel_error = find_best_config(T_q, 1, b, ppow)
-			val = curr_best_config[3]/curr_best_config[2]
-			# curr_best_config.append(curr_best_config[0]/(2**curr_best_config[1]))
-			if b==0:
-				currstr = "Paper Metric"
-			else:
-				currstr = "Our Metric:"
-
-			if ppow == 0:
-				currstr += "; p powers of 2"
-			else:
-				currstr += "; p arbitrary"
-
-			print(currstr)
-			print(curr_best_config)
-			print("n/m = "+str(val))
-			print("bias = "+str(bias))
-			print("relative error = "+str(rel_error))
-			print("l2 relative error = "+str(l2_rel_error))
-			print("-------------------------------------------------")
-			
-	print("-------------------------------------------------")
-
-exit()
-
-
 # Running on queries_in.txt and packet_info.txt :
 
 def run_on_files():
@@ -232,5 +201,29 @@ def run_on_files():
 		# print(query)
 	fout.close()
 
-run_on_files()
+# HLL from here on
 
+def HLL_reaching_threshold(p, T_q):
+    n_q = p * T_q
+    hll = HyperLogLog(NUM_ESTIMATORS)
+    MAX_TRY = 3*T_q
+    for i in range(1, MAX_TRY + 1):
+        val = random.uniform(0,1)
+        if val <= p:
+            hll.add(str(i) + str(random.random()))
+            if hll.cardinality() >= n_q:
+                return i
+    return MAX_TRY
+
+def HLL_error_experiment(p, T_q):
+    sum_rel_error = 0
+    sum_sq_error = 0
+    for trial in range(NUM_TRIALS):
+        num_packets = HLL_reaching_threshold(p, T_q)
+        # print(num_packets)
+        sum_rel_error += relative_error(num_packets, T_q)
+        sum_sq_error += (num_packets-T_q)*(num_packets-T_q)
+    rel_error_average = sum_rel_error/NUM_TRIALS
+    sq_error_average = sum_sq_error/NUM_TRIALS
+    l2_rel_error_average = math.sqrt(sq_error_average)/T_q
+    return rel_error_average, l2_rel_error_average

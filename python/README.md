@@ -6,5 +6,3 @@
 2. python3 simulation.py
 	- Input: queries.txt, packet_info.txt
 	- Output: 
-
-# Also add file for pre preocessing packets from internet
