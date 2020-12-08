@@ -31,24 +31,38 @@ struct table_key_t {
 typedef uint64_t entry_t;
 
 BPF_HASH(stats, struct table_key_t, entry_t);
-// BPF_PERF_OUTPUT(events);
+BPF_PERF_OUTPUT(events);
 
-static void collect(int16_t queryNum, uint8_t queryN, uint8_t couponNum, struct data_t* queryKey) {
+static uint8_t popcount(entry_t x) {
+  x = (x&0x9249249249249249ULL) + ((x>>1)&0x9249249249249249ULL) + ((x>>2)&0x9249249249249249ULL);
+  x = (x + (x>>3)) & 0x4141414141414141ULL;
+  x = x + (x>>6);
+  x = x + (x>>12) + (x>>24);
+  x = x + (x>>36);
+  return x & 0x3f;
+}
+
+static void collect(struct xdp_md *ctx, int16_t queryNum, uint8_t queryN, uint8_t couponNum, struct data_t* queryKey) {
   struct table_key_t key;
   key.queryNum = queryNum;
   key.queryKey = *queryKey;
 
   entry_t x = 1u << couponNum;
   entry_t* p = stats.lookup(&key);
+  if (p != NULL) {
+    x |= *p;
+  }
+
+  if (__builtin_popcount(x) == queryN) {
+      /* bpf_trace_printk("hit threshold for query %d!", queryNum); */
+    events.perf_submit(ctx, &queryNum, sizeof(queryNum));
+    x = ~0;
+  }
+
   if (p == NULL) {
     stats.update(&key, &x);
   } else {
-    x |= *p;
     *p = x;
-  }
-
-  if (__builtin_popcount(x) >= queryN) {
-    /*   bpf_trace_printk("hit threshold for query %d!", queryNum); */
   }
 }
 
@@ -79,8 +93,8 @@ static uint32_t hash(struct data_t* data) {
   return x >> 32 ^ x;
 }
 
-static void processPacket(struct data_t* pkt) {
-  collect(-1,0,0,pkt);
+static void processPacket(struct xdp_md *ctx, struct data_t* pkt) {
+  /* collect(ctx,-1,0,0,pkt); */
   struct data_t masked;
   uint32_t h;
 #if false
@@ -90,10 +104,10 @@ static void processPacket(struct data_t* pkt) {
   if (false) { // just to make formatting consistent
   } else if (0u << 30 <= h && h <= (1u << 30) - 1) {
     populateData(pkt, &masked, 1 << srcPort);
-    queueCollection(0, 4, (h - (0u << 30)) >> 28, &masked);
+    queueCollection(ctx, 0, 4, (h - (0u << 30)) >> 28, &masked);
   } else if (1u << 30 <= h && h <= (2u << 30) - 1) {
     populateData(pkt, &masked, 1 << srcIP | 1 << srcPort);
-    queueCollection(1, 8, (h - (1u << 30)) >> 27, &masked);
+    queueCollection(ctx, 1, 8, (h - (1u << 30)) >> 27, &masked);
   }
 #else
 #include "queries.h"
@@ -117,7 +131,7 @@ int monitor(struct xdp_md *ctx) {
           packet.srcPort = udp->source;
           packet.dstPort = udp->dest;
           packet.timestamp = bpf_ktime_get_ns();
-          processPacket(&packet);
+          processPacket(ctx, &packet);
         }
       }
     }

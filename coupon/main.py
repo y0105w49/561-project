@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
-from bcc import BPF
+
 import time
+
+from bcc import BPF
+from bcc.utils import printb
+import ctypes as ct
+
 
 device = "lo"
 b = BPF(src_file="filter.c", cflags=["-I/vagrant/coupon"])
@@ -14,23 +19,37 @@ def fmtIP(x):
 def fmtPort(x):
   return (x>>8) + ((x&255)<<8)
 
-def print_event():
+def print_coupons():
   print('all coupons:')
   for key, coups in b["stats"].items():
     query = key.queryKey
+    if key.queryNum == -1:
+      continue
     print(f'coupon for query #{key.queryNum:2}, '
           f'key {fmtIP(query.srcIP):>15}:{fmtPort(query.srcPort):<5} '
           f'-> {fmtIP(query.dstIP):>15}:{fmtPort(query.dstPort):<5} '
           f't={query.timestamp%1000:03d}, collected {bin(coups.value)}')
-  print()
 
-# b["events"].open_perf_buffer(print_event)
+seen = set()
+def print_event(cpu, data, size):
+  qn = ct.cast(data, ct.POINTER(ct.c_short)).contents.value
+  if qn in seen:
+    return
+  seen.add(qn)
+  print(f'event {qn} triggered!')
+
+b['events'].open_perf_buffer(print_event)
 
 print('loaded!')
 
 while(True):
-  print_event()
+  b.perf_buffer_poll()
+
+  print_coupons()
+  print()
+
   # b.trace_print()
+
   time.sleep(2)
 '''
 try:

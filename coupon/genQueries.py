@@ -36,7 +36,7 @@ class Query:
     lines = []
     lines.append(f'{"}"} else if ({start} <= h && h <= {end-1}) {"{"}')
     lines += ['  ' + l for l in self.set_masked(self.keys)]
-    lines.append(f'  queueCollection({self.queryNum}, {self.n}, (h-{start}) >> {shift}, &masked);')
+    lines.append(f'  queueCollection(ctx, {self.queryNum}, {self.n}, (h-{start}) >> {shift}, &masked);')
     return lines, end
 
 queries_by_attrs = defaultdict(list)
