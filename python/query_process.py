@@ -77,8 +77,14 @@ def compute_error(m_q, inv_p_q, T_q, b):
 	if b==0:
 		list_error = CC_exp_rel_err(m_q, inv_p_q, T_q)
 		bestind = 0
+
+		exists_within_tol = 0
 		for i in range(m_q):
-			if relative_error(list_exp[i], T_q) > ERROR_TOLERANCE:		# relative error of the expectation here
+			if relative_error(list_exp[i], T_q) <= ERROR_TOLERANCE:		# relative error of the expectation here
+				exists_within_tol = 1
+
+		for i in range(m_q):
+			if exists_within_tol == 1 and relative_error(list_exp[i], T_q) > ERROR_TOLERANCE:		# relative error of the expectation here
 				list_error[i] = math.inf
 			if i!=0:
 				if list_error[i] < list_error[bestind]:
@@ -201,7 +207,7 @@ def run_on_files():
 		# print(query)
 	fout.close()
 
-# HLL from here on
+# HLL from here only
 
 def HLL_reaching_threshold(p, T_q):
     n_q = p * T_q
