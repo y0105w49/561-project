@@ -112,12 +112,15 @@ class CCTable:
 
         # print(self.table[qk_pair])  
 
-# class countTable:
-#     table = {}
+class countTable:
+    table = {}
     
-#     def add_packet(self, packet):
-#         for query in queries:
-#             key_q = query.key
+    def count_packet(self, packet):
+        for query in queries:
+            keyval = packet.extract(query.key)
+            qk_pair = (query, keyval)
+            self.table[qk_pair] = self.table.get(qk_pair, 0) + 1
+
 
 
 
@@ -160,9 +163,12 @@ attr_to_hashfunc = {}
 pre_process()
 
 cctable = CCTable(5);
+count_table = countTable();
 
 for pack in packets:
     cctable.add_packet(pack)
+    count_table.count_packet(pack)
+
 
 
 # print(queries)
