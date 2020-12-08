@@ -12,15 +12,15 @@
 # <query num> <keys> <attrs> <T_q> <pnum> <-log(pden)> <m> <n> (keys,attrs are comma-separated)
 # changes keys and attributes to integers representing subsets, according to packet_info.txt
 # For exmaple:
-# 1 2 1 93 10 11 1
-# 2 3 8 124 7 14 9
+# 1 2 1 93 1 6 32 24
+# 2 3 8 124 1 6 32 27
 
 import random
 import math
 # variables
 MAX_MEMORY = 32 			# w = 32-bit
 ERROR_TOLERANCE = 0.05
-P_LIMIT = 30
+P_LIMIT = 25
 NUM_TRIALS = 50			# for find_best_config_new
 
 # order = 1 gives expectation, order = 2 gives squared variance
@@ -114,7 +114,20 @@ def find_best_config(T_q, gamma_q, b, ppow):
 						best_config = [1, i, m_q, n_q]		# pnum = 1 in this case
 						smallest_error = curr_error
 	else:
-		return []
+		for m_q in range(1, MAX_MEMORY+1):
+			list_p = moment_CC(m_q, 1/T_q, 1)
+			for n_q in range(1, m_q+1):
+				p_q = list_p[n_q-1]
+				p_q_denom = 2**(P_LIMIT)
+				p_q_num = math.floor(p_q * p_q_denom)
+				p_q = p_q_num/p_q_denom
+				p_q = min(p_q, gamma_q/m_q)
+				list_curr_error = compute_error(m_q, 1/p_q, T_q, b)
+				curr_error = list_curr_error[n_q-1]
+				if curr_error < smallest_error:
+					best_config = [p_q_num, P_LIMIT, m_q, n_q]		# pnum = 1 in this case
+					smallest_error = curr_error
+
 
 	prob = best_config[0]/(2**best_config[1])
 	inv_prob = 1/prob
@@ -129,36 +142,40 @@ def find_best_config(T_q, gamma_q, b, ppow):
 	list_rel_error = CC_exp_rel_err(m_q, inv_prob, T_q)
 	rel_error = list_rel_error[ind]
 	# Square relative error
-	list_sqvar = moment_CC(m_q, inv_p_q, 2)
+	list_sqvar = moment_CC(m_q, inv_prob, 2)
 	sq_rel_error = (list_exp[ind]-T_q)*(list_exp[ind]-T_q)  + list_sqvar[ind]
 	l2_rel_error = (math.sqrt(sq_rel_error))/T_q
 	return (best_config, bias, rel_error, l2_rel_error)
-	# return (best_config,0,0,0)
 
 
 # Simulations for a single query :
 
-for T_q in range(100,123):
+for T_q in range(1000,1001):
 	print("T_q = "+str(T_q))
-	curr_best_config, bias, rel_error, l2_rel_error = find_best_config(T_q, 1, 0, 0)
-	# print(curr_best_config)
-	val = curr_best_config[3]/curr_best_config[2]
-	print("Paper Metric:")
-	print("n/m = "+str(val))
-	print("bias = "+str(bias))
-	print("relative error = "+str(rel_error))
-	print("l2 relative error = "+str(l2_rel_error))
-	print("-------------------------------------------------")
 
-	curr_best_config, bias, rel_error, l2_rel_error = find_best_config(T_q, 1, 1, 0)
-	# print(curr_best_config)
-	val = curr_best_config[3]/curr_best_config[2]
-	print("Our Metric:")
-	print("n/m = "+str(val))
-	print("bias = "+str(bias))
-	print("relative error = "+str(rel_error))
-	print("l2 relative error = "+str(l2_rel_error))
-	print("-------------------------------------------------")
+	for b in range(2):
+		for ppow in range(2):
+			curr_best_config, bias, rel_error, l2_rel_error = find_best_config(T_q, 1, b, ppow)
+			val = curr_best_config[3]/curr_best_config[2]
+			# curr_best_config.append(curr_best_config[0]/(2**curr_best_config[1]))
+			if b==0:
+				currstr = "Paper Metric"
+			else:
+				currstr = "Our Metric:"
+
+			if ppow == 0:
+				currstr += "; p powers of 2"
+			else:
+				currstr += "; p arbitrary"
+
+			print(currstr)
+			print(curr_best_config)
+			print("n/m = "+str(val))
+			print("bias = "+str(bias))
+			print("relative error = "+str(rel_error))
+			print("l2 relative error = "+str(l2_rel_error))
+			print("-------------------------------------------------")
+			
 	print("-------------------------------------------------")
 
 exit()
