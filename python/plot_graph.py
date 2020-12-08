@@ -64,14 +64,35 @@ for line in f:
     list_l2_rel_error_HLL.append(l2_rel_error)
 f.close()
 
+f = open("HLL_errors_8.txt", "r")
+list_gammas = []
+list_rel_error_HLL_8 = []
+list_l2_rel_error_HLL_8 = []
+for line in f:
+    gamma, rel_error, l2_rel_error = [float(x) for x in line.split(",")]
+    list_gammas.append(gamma)
+    list_rel_error_HLL_8.append(rel_error)
+    list_l2_rel_error_HLL_8.append(l2_rel_error)
+f.close()
+
+f = open("HLL_errors_16.txt", "r")
+list_gammas = []
+list_rel_error_HLL_16 = []
+list_l2_rel_error_HLL_16 = []
+for line in f:
+    gamma, rel_error, l2_rel_error = [float(x) for x in line.split(",")]
+    list_gammas.append(gamma)
+    list_rel_error_HLL_16.append(rel_error)
+    list_l2_rel_error_HLL_16.append(l2_rel_error)
+f.close()
 
 # plot relative error
 
-plt.plot(list_gammas, list_rel_error_HLL, "x-", label="HyperLogLog")
-plt.plot(list_gammas, list_rel_error_BC00, "+-", label="BeauCoup: Original metric, p power of 2")
+plt.plot(list_gammas, list_rel_error_BC00, "x-", label="BeauCoup: Original metric, p power of 2")
 plt.plot(list_gammas, list_rel_error_BC01, "2--", label="BeauCoup: Original metric, p arbitrary")
 plt.plot(list_gammas, list_rel_error_BC10, "-.", label="BeauCoup: L2 metric, p power of 2")
 plt.plot(list_gammas, list_rel_error_BC11, "*-", label="BeauCoup: L2 metric, p arbitrary")
+
 
 plt.ylabel("Mean Relative Error")
 plt.xscale('log', basex=10)
@@ -82,11 +103,11 @@ plt.close()
 
 
 # plot l2 relative error
-plt.plot(list_gammas, list_l2_rel_error_HLL, "x-", label="HyperLogLog")
-plt.plot(list_gammas, list_l2_rel_error_BC00, "+-", label="BeauCoup: Original metric, p power of 2")
+plt.plot(list_gammas, list_l2_rel_error_BC00, "x-", label="BeauCoup: Original metric, p power of 2")
 plt.plot(list_gammas, list_l2_rel_error_BC01, "2--", label="BeauCoup: Original metric, p arbitrary")
 plt.plot(list_gammas, list_l2_rel_error_BC10, "-.", label="BeauCoup: L2 metric, p power of 2")
 plt.plot(list_gammas, list_l2_rel_error_BC11, "*-", label="BeauCoup: L2 metric, p arbitrary")
+
 
 plt.ylabel("Mean L2 Relative Error")
 plt.xscale('log', basex=10)
@@ -102,4 +123,17 @@ plt.xscale('log', basex=10)
 plt.xlabel('Average memory access per packet ($\gamma$)')
 plt.legend()
 plt.savefig("figures/bias.png")
+plt.close()
+
+plt.plot(list_gammas, list_rel_error_BC00, "x-", label="BeauCoup: Original metric, p power of 2")
+plt.plot(list_gammas, list_rel_error_HLL_8, "2--", label="HyperLogLog 8 estimators")
+plt.plot(list_gammas, list_rel_error_HLL_16, "-.", label="HyperLogLog 16 estimators")
+plt.plot(list_gammas, list_rel_error_HLL, "+-", label="HyperLogLog 64 estimators")
+
+
+plt.ylabel("Mean Relative Error")
+plt.xscale('log', basex=10)
+plt.xlabel('Average memory access per packet ($\gamma$)')
+plt.legend()
+plt.savefig("figures/hll_compare.png")
 plt.close()

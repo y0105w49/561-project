@@ -1,8 +1,10 @@
+from python.query_process import NUM_ESTIMATORS
 import random
 import math
 from HLL import HyperLogLog
 
-EST = 6
+NUM_ESTIMATORS = 6
+IND_TIMESTAMP = 5
 
 class Hash_Function:
     func = {}
@@ -34,7 +36,7 @@ class Packet:
         self.pac_info = pac_info      # has srcIP, dstIP, srcPort, dstPort, ... in some fixed order
 
     def get_timestamp(self):
-        return self.pac_info[5];      # TODO: modify accordingly
+        return self.pac_info[IND_TIMESTAMP];      # modify accordingly
 
     def extract(self, indset):        # get values for some index subset from pac_info
         val = []
@@ -47,14 +49,6 @@ class Packet:
 
         attrval = self.extract(attr)
         hashval = attr_to_hashfunc[attr].value(attrval)
-        # query, coupon = which_coupon(attr, hashval)
-        # print(hashval)
-        # if query != None:
-        #     print(query.key)
-        # else:
-        #     print(query)
-        # print(coupon)
-        # print()
         return which_coupon(attr, hashval)
 
     def collect_coupon(self):
@@ -66,7 +60,6 @@ class Packet:
             if query != None:
                 collected.append((query, attr))
 
-        # print(len(collected))
         if len(collected) == 1:
             return collected[0]
         elif len(collected) == 2:
@@ -98,7 +91,7 @@ class HLLTable:
 
         if qk_pair not in self.table.keys() or self.table_timestamp[qk_pair] < timestamp - self.W:
             self.table_timestamp[qk_pair] = timestamp
-            self.table[qk_pair] = HyperLogLog(EST)
+            self.table[qk_pair] = HyperLogLog(NUM_ESTIMATORS)
             self.table_count[qk_pair] = self.table[qk_pair].cardinality()
 
         self.table[qk_pair].add(str(attr)) # expect attr to be string
@@ -109,8 +102,14 @@ class HLLTable:
             print("Output alert for query, keyval here ")
             print(query.key) 
 
-        # print(self.table[qk_pair])  
-
+class countTable:
+    table = {}
+    
+    def count_packet(self, packet):
+        for query in queries:
+            keyval = packet.extract(query.key)
+            qk_pair = (query, keyval)
+            self.table[qk_pair] = self.table.get(qk_pair, 0) + 1
 
 # Main
 
@@ -150,53 +149,8 @@ attr_to_hashfunc = {}
 pre_process()
 
 hlltable = HLLTable(5);
+count_table = countTable();
 
 for pack in packets:
     hlltable.add_packet(pack)
-
-
-# print(queries)
-# print(packets)
-# for attr in attributes:
-#     print(attr_to_querylist[attr])
-# print(attr_to_querylist)
-# print(attr_to_hashfunc)
-
-# print(attributes)
-# print(packets[3].extract(queries[2].key))
-# print(packets[3].extract(queries[2].attr))
-# print()
-
-# query, coupon = which_coupon(frozenset([1,3]), 1/4+3/16)
-# print(query.key);
-# print(coupon)
-# print()
-# query, coupon = which_coupon(frozenset([1,3]), 3/4-0.001)
-# print(query.key);
-# print(coupon)
-# print()
-# query, coupon = which_coupon(frozenset([1,3]), 3/4)
-# print(query);
-# print(coupon)
-# print()
-# query, coupon = which_coupon(frozenset([1]), 1/8)
-# print(query.key);
-# print(coupon)
-# print()
-
-# query, coupon = packets[1].collect_coupon()
-# if query != None:
-#     print(query.key)
-# else:
-#     print(query)
-# print(coupon)
-# print()
-
-######################################################################
-
-hll = HyperLogLog(6)
-data = range(5000)
-for i in data:
-    if random.random() > 0.2:
-        hll.add(str(i) + str(random.random()))
-hll.cardinality()
+    count_table.count_packet(pack)
