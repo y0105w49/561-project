@@ -1,5 +1,8 @@
+from python.HLL_simulation import IND_TIMESTAMP
 import random
 import math
+
+IND_TIMESTAMP = 5
 
 class Hash_Function:
     func = {}
@@ -34,7 +37,7 @@ class Packet:
         self.pac_info = pac_info      # has srcIP, dstIP, srcPort, dstPort, ... in some fixed order
 
     def get_timestamp(self):
-        return self.pac_info[5];      # TODO: modify accordingly
+        return self.pac_info[IND_TIMESTAMP];      # modify accordingly
 
     def extract(self, indset):        # get values for some index subset from pac_info
         val = []
