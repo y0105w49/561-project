@@ -112,6 +112,15 @@ class CCTable:
 
         # print(self.table[qk_pair])  
 
+# class countTable:
+#     table = {}
+    
+#     def add_packet(self, packet):
+#         for query in queries:
+#             key_q = query.key
+
+
+
 
 # Main
 
